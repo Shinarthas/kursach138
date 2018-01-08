@@ -27,6 +27,7 @@ import math
 from PIL import Image
 #from Image import *
 from matplotlib import pyplot as plt
+from matplotlib import  cm
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 try:
@@ -82,7 +83,9 @@ index1=0
 image1=image2=image3=0
 lootScheme=0
 mask1=mask2=mask3=[]
+Cmask1=Cmask2=Cmask3=[]
 rawMask1=rawMask2=rawMask3=[]
+binaryMask1=[]
 M1=M2=M3=0
 
 maskLoot1=maskLoot2=maskLoot3=0
@@ -146,6 +149,14 @@ class Ui_Form(QtGui.QWidget):
         self.horizontalSlider2.setValue(params[1]/2)
         self.horizontalSlider2.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider2.setObjectName(_fromUtf8("horizontalSlider2"))
+
+        self.opacity = QtGui.QSlider(Form)
+        self.opacity.setGeometry(QtCore.QRect(540+(940 - 540) / 2, 210-40, (940 - 540) / 2 - 10, 22))
+        self.opacity.setMinimum(0)
+        self.opacity.setMaximum(100)
+        self.opacity.setValue(50)
+        self.opacity.setOrientation(QtCore.Qt.Horizontal)
+        self.opacity.setObjectName(_fromUtf8("opacity"))
         #self.horizontalSlider2.valueChanged.connect(self.valuechange)
 
         self.H = QtGui.QLabel(Form)
@@ -169,6 +180,7 @@ class Ui_Form(QtGui.QWidget):
         self.horizontalSlider1.valueChanged.connect(self.openGLWidget.resetTextures)
         self.horizontalSlider2.valueChanged.connect(self.openGLWidget.resetTextures)
         self.horizontalSlider3.valueChanged.connect(self.openGLWidget.resetTextures)
+        self.opacity.valueChanged.connect(self.openGLWidget.glDraw)
 
         self.addItem = QtGui.QPushButton(Form)
         self.addItem.setGeometry(QtCore.QRect(540 +(940-540)/2 +10, 100, (940-540)/2-20, 40))
@@ -186,7 +198,7 @@ class Ui_Form(QtGui.QWidget):
         self.save.setObjectName(_fromUtf8("save"))
 
         self.screen = QtGui.QPushButton(Form)
-        self.screen.setGeometry(QtCore.QRect(540+(940 - 540) / 2, 210-50, (940 - 540) / 2 - 10, 40))
+        self.screen.setGeometry(QtCore.QRect(540+(940 - 540) / 2, 210-50-20, (940 - 540) / 2 - 10, 40-10))
         self.screen.clicked.connect(self.screenToFile)
         self.screen.setObjectName(_fromUtf8("screen"))
 
@@ -217,58 +229,78 @@ class Ui_Form(QtGui.QWidget):
         p2=window.openGLWidget.grabFrameBuffer()
         #p = QPixmap.grabWindow(window.winId())
         p2.save('screen.jpg', 'jpg')
+
+        first = os.listdir(inputdir)[int(window.horizontalSlider1.value())]
+        target = inputdir + first
+        plan = dicom.read_file(target)
+        max = np.max(plan.pixel_array)
+        wtf = self.convertQImageToMat(p2)
+        plan.SpecificCharacterSet="ISO_IR 100"
+        plan.PhotometricInterpretation="RGB"
+        plan.SamplesPerPixel=3
+        plan.Rows=len(wtf)
+        plan.Columns=len(wtf[0])
+        plan.BitsAllocated=8
+        plan.BitsStored=8
+        plan.HighBit=7
+        plan.PixelRepresentation=0
+        plan.PixelData = wtf.astype(np.uint8).tobytes()
+        plan.save_as("rtplan3.dcm")
+
+        print len(wtf),len(wtf[0]),len(wtf[0][0])
         window.openGLWidget.loadScreen(p2)
         print "shot taken"
     def saveToFile(self):
         first = os.listdir(inputdir)[int(window.horizontalSlider1.value())]
-        target=inputdir+first
-        plan=dicom.read_file(target)
-        #a = np.tobuffer(mask1, numpy.uint8)
-        max= np.max(plan.pixel_array)
-        wtf=mask1/255.0*max
-        plan.Rows=512
-        plan.Columns=512
+        target = inputdir + first
+        plan = dicom.read_file(target)
+        # a = np.tobuffer(mask1, numpy.uint8)
+        max = np.max(plan.pixel_array)
 
-        i_overlay = 1
-        i_overlay = 1
-        n_bits = 8
+        wtf =np.zeros([512,512],dtype=np.uint16)
+        for i in rawMask1:
+            wtf[i[0]][i[1]]=1
 
-        # and so on.
-        dicom_tag1 = 0x6000 + 2 * i_overlay
+        step=8
+        for i in range(0,len(wtf)-step,step):
+            wtf[:,i:i+step]=wtf[:,i+step:i:-1]
 
+        im = Image.fromarray(wtf.astype(np.uint8)*255,"L")
+        im.save('my.png')
+        wtf2=np.packbits(wtf.ravel())
 
+        print len(wtf) ,len(wtf[0])
+        #print np.min(wtf), np.max(wtf)
+        plan.Rows = 512
+        plan.Columns = 512
 
         # On (60xx,0010) and (60xx,0011) is stored overlay size
-        #ds.add_new(tag, VR, value) dictionaryVR
+        # ds.add_new(tag, VR, value) dictionaryVR
+
         plan.add_new([0x6000, 0x0010], "US", plan.Rows)
         plan.add_new([0x6000, 0x0011], "US", plan.Columns)
         plan.add_new([0x6000, 0x0040], "CS", "R")
-        plan.add_new([0x6000, 0x0050], "SS", 1)
+        plan.add_new([0x6000, 0x0050], "SS", [1, 1])
         plan.add_new([0x6000, 0x0100], "US", 1)
-        plan.add_new([0x6000, 0x0102], "US", 0)
-        plan.add_new([0x6000, 0x3000], "OB", mask1.astype(np.int16).tobytes())
-        plan[0x6000, 0x0010].value=plan.Rows  # rows = 512
-        plan[0x6000, 0x0011].value=plan.Columns # cols = 512
-        #plan[dicom_tag1, 0x0011].value=plan.Columns # cols = 512
-
-        plan[0x6000, 0x0040].value="G" # cols = 512
-        #plan[0x6000, 0x0050].value="1\\1" # cols = 512
-        #plan[0x6000, 0x0100].value=plan.BitsAllocated # cols = 512
-
-        #plan[0x6000, 0x3000].value = wtf.astype(np.int16).tobytes()
-
-        plan.OverlayRows=plan.Rows
-        plan.OverlayColumns=plan.Columns
-        plan.OverlayType="G"
-        plan.OverlayOrigin="1\\1"
-        plan.OverlayBitsAllocated=1
-        plan.OverlayBitPosition=0
-        plan.OverlayData=wtf.astype(np.int16).tobytes()
-        #plan.pixel_array=wtf.astype(np.int16)
-        plan.PixelData = wtf.astype(np.int16).tobytes()
+        plan.add_new([0x6000, 0x0102], "US", 1)
+        plan.add_new([0x6000, 0x3000], "OB", wtf2)
+        #plan.PixelData = wtf.astype(np.int16).tobytes()
         plan.save_as("rtplan2.dcm")
 
+    def convertQImageToMat(self,incomingImage):
+        '''  Converts a QImage into an opencv MAT format  '''
 
+        incomingImage = incomingImage.convertToFormat(4)
+
+        width = incomingImage.width()
+        height = incomingImage.height()
+
+        ptr = incomingImage.bits()
+        ptr.setsize(incomingImage.byteCount())
+        arr = np.array(ptr).reshape(height, width, 4)  # Copies the data
+        #x = np.zeros((106, 106, 3))
+        result = arr[:, :, 0:3]
+        return result
     def addArea(self):
         self.openGLWidget.add=1
     def clearRects(self):
@@ -420,6 +452,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         global lim1, lim2, lim3
         global image1, image2, image3, imagesGlobal
         global mask1,mask2,mask3
+        global Cmask1,Cmask2,Cmask3
         global maskLoot1,maskLoot2,maskLoot3
         global rawMask1,rawMask2,rawMask3
         global index1,Lx,Ly,Lz
@@ -482,6 +515,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         mask1 = np.copy(image1)
         mask2 = np.copy(image2)
         mask3 = np.copy(image3)
+
         glBindTexture(GL_TEXTURE_2D, M1);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
         glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask1), len(mask1[0]), 0, COLORS, MODE, mask1)
@@ -518,9 +552,12 @@ class GLWidget(QtOpenGL.QGLWidget):
         mask1 = np.copy(image1)
         mask2 = np.copy(image2)
         mask3 = np.copy(image3)
+        Cmask1 = np.dstack(3 * [mask1]).reshape((mask1.shape[0], 3 * mask1.shape[1]))
+        Cmask2 = np.dstack(3 * [mask2]).reshape((mask2.shape[0], 3 * mask2.shape[1]))
+        Cmask3 = np.dstack(3 * [mask3]).reshape((mask3.shape[0], 3 * mask3.shape[1]))
         glBindTexture(GL_TEXTURE_2D, M1);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask1), len(mask1[0]), 0, COLORS, MODE, mask1)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask1), len(mask1[0]), 0, GL_RGB, MODE, Cmask1)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -531,7 +568,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBindTexture(GL_TEXTURE_2D, M2);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask2[0]), len(mask2), 0, COLORS, MODE, mask2)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask2[0]), len(mask2), 0, GL_RGB, MODE, Cmask2)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -542,7 +579,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBindTexture(GL_TEXTURE_2D, M3);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask3[0]), len(mask3), 0, COLORS, MODE, mask3)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask3[0]), len(mask3), 0, GK_RGB, MODE, Cmask3)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -598,6 +635,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         global IDs, IDs2, IDs3, spacing, slice
         global M1, M2,M3
         global mask1,mask2,mask3
+        global Cmask1,Cmask2,Cmask3
         global ML1,ML2,ML3
         global maskLoot1,maskLoot2,maskLoot3
         global lim1, lim2, lim3
@@ -715,9 +753,12 @@ class GLWidget(QtOpenGL.QGLWidget):
         mask1 = np.copy(image1)
         mask2 = np.copy(image2)
         mask3 = np.copy(image3)
+        Cmask1 = np.dstack(3 * [mask1]).reshape((mask1.shape[0], 3 * mask1.shape[1]))
+        Cmask2 = np.dstack(3 * [mask2]).reshape((mask2.shape[0], 3 * mask2.shape[1]))
+        Cmask3 = np.dstack(3 * [mask3]).reshape((mask3.shape[0], 3 * mask3.shape[1]))
         glBindTexture(GL_TEXTURE_2D, M1);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask1), len(mask1[0]), 0, COLORS, MODE, mask1)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask1), len(mask1[0]), 0, GL_RGB, MODE, Cmask1)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -728,7 +769,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBindTexture(GL_TEXTURE_2D, M2);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask2[0]), len(mask2), 0, COLORS, MODE, mask2)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask2[0]), len(mask2), 0, GL_RGB, MODE, Cmask2)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -739,7 +780,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBindTexture(GL_TEXTURE_2D, M3);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask3[0]), len(mask3), 0, COLORS, MODE, mask3)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask3[0]), len(mask3), 0, GL_RGB, MODE, Cmask3)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -789,6 +830,8 @@ class GLWidget(QtOpenGL.QGLWidget):
         rawMask1=list()
         rawMask2=list()
         rawMask3=list()
+
+
 
         print lim3
         window.dc.update_figure(0)
@@ -857,7 +900,10 @@ class GLWidget(QtOpenGL.QGLWidget):
         glLoadIdentity()
 
         glOrtho(-W, W, -H, H, -W, W);
-
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+        glColor4f(1.0, 1.0, 1.0, 1.0);
         glBindTexture(GL_TEXTURE_2D, IDs[index1])
         glBegin(GL_QUADS);
 
@@ -907,11 +953,13 @@ class GLWidget(QtOpenGL.QGLWidget):
             glVertex2f(w, -h);
 
             glEnd();
-
+        glColor4f(1.0, 1.0, 1.0, window.opacity.value()/100.0);
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
         if window.maskCheckBox.isChecked():
             self.drawMask()
         if window.maskLootCheckBox.isChecked():
             self.drawMaskLoot()
+        glDisable(GL_BLEND);
         self.drawAreaSelected()
         self.drawLines()
         self.drawText()
@@ -1097,6 +1145,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
     def mousePressEvent(self, event):
         global mask1,mask2,mask3
+        global Cmask1,Cmask2,Cmask3
         global rawMask1,rawMask2,rawMask3
         global maskLoot1,maskLoot2,maskLoot3
         global lootScheme
@@ -1141,8 +1190,11 @@ class GLWidget(QtOpenGL.QGLWidget):
                             maskLoot1[i][j * 3] = lootScheme[li][1]
                             maskLoot1[i][j * 3+1] = lootScheme[li][2]
                             maskLoot1[i][j * 3+2] = lootScheme[li][3]
+                            Cmask1[i][j * 3] = 0
+                            Cmask1[i][j * 3+1] = 153
+                            Cmask1[i][j * 3+2] = 0
                         mask1[i][j]=max(mask[i][j],mask1[i][j])
-                mask=mask1
+                mask=Cmask1
                 maskLoot=maskLoot1
             if pointer == 2:
                 rawMask2 =rawMask2+ result[1]
@@ -1160,8 +1212,11 @@ class GLWidget(QtOpenGL.QGLWidget):
                             maskLoot2[i][j * 3] = int(lootScheme[li][1])
                             maskLoot2[i][j * 3 + 1] = int(lootScheme[li][2])
                             maskLoot2[i][j * 3 + 2] = int(lootScheme[li][3])
+                            Cmask2[i][j * 3 ] = 0
+                            Cmask2[i][j * 3 +1] = 153
+                            Cmask2[i][j * 3 + 2] = 0
                         mask2[i][j] = max(mask[i][j], mask2[i][j])
-                mask = mask2
+                mask = Cmask2
                 maskLoot = maskLoot2
             if pointer == 3:
                 rawMask3 = rawMask3+result[1]
@@ -1179,11 +1234,14 @@ class GLWidget(QtOpenGL.QGLWidget):
                             maskLoot3[i][j * 3] = int(lootScheme[li][1])
                             maskLoot3[i][j * 3+1] = int(lootScheme[li][2])
                             maskLoot3[i][j * 3+2] = int(lootScheme[li][3])
+                            Cmask3[i][j * 3] = 0
+                            Cmask3[i][j * 3+1] = 153
+                            Cmask3[i][j * 3+2] = 0
                         mask3[i][j] = max(mask[i][j], mask3[i][j])
-                mask = mask3
+                mask = Cmask3
                 maskLoot = maskLoot3
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-            glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask[0]), len(mask), 0, COLORS, MODE, mask)
+            glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask[0])/3, len(mask), 0, GL_RGB, MODE, mask)
             glGetIntegerv(GL_TEXTURE_BINDING_2D)
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -1216,22 +1274,31 @@ class GLWidget(QtOpenGL.QGLWidget):
                 lim = lim1
                 image = np.copy(imagesGlobal[window.horizontalSlider1.value()])
                 mask=mask1
+                Cmask=Cmask1
                 maskLoot=maskLoot1
             if pointer == 2:
                 lim = lim2
                 image = image2
                 maskLoot = maskLoot2
                 mask = mask2
+                Cmask = Cmask2
             if pointer == 3:
                 lim = lim3
                 image = image3
                 maskLoot = maskLoot3
                 mask = mask3
+                Cmask = Cmask3
+            mask=mask
+            Cmask=Cmask
+
             for i in range (int(x0-10),int(x0+10)):
                 for j in range(int(y0 - 10), int(y0 + 10)):
                     is_in_img = len(image) > i >= 0 and len(image[0]) > j >= 0  # returns boolean
                     if is_in_img:
                         mask[i][j]=255
+                        Cmask[i][3*j]=0
+                        Cmask[i][3*j+1]=153
+                        Cmask[i][3*j+2]=0
                         maskLoot[i][3*j]=lootScheme[int(image[i][j])][1]
                         maskLoot[i][3*j+1]=lootScheme[int(image[i][j])][2]
                         maskLoot[i][3*j+2]=lootScheme[int(image[i][j])][3]
@@ -1246,7 +1313,7 @@ class GLWidget(QtOpenGL.QGLWidget):
             COLORS = GL_LUMINANCE
             MODE = GL_UNSIGNED_BYTE
             glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-            glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask[0]), len(mask), 0, COLORS, MODE, mask)
+            glTexImage2D(GL_TEXTURE_2D, 0, 3, len(Cmask[0])/3, len(Cmask), 0, GL_RGB, MODE, Cmask)
             glGetIntegerv(GL_TEXTURE_BINDING_2D)
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
             glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -1306,7 +1373,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         ret=ret1-ret2
         for i in range(len(ret)):
             for j in range(len(ret[0])):
-                if ret[i][j]>250:
+                if ret[i][j]>=255:
                     countur.append([i,j])
 
         #print len(ret), len(ret[0]), len(countur)
