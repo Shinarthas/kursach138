@@ -906,23 +906,19 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBindTexture(GL_TEXTURE_2D, IDs[index1])
         glBegin(GL_QUADS);
 
-        glTexCoord2f(0.0, 0.0);
-        glVertex2f(-w, 0);
-        glTexCoord2f(1.0, 0.0);
-        glVertex2f(0, 0);
-        glTexCoord2f(1.0, 1.0);
-        glVertex2f(0, -h);
-        glTexCoord2f(0.0, 1.0);
-        glVertex2f(-w, -h);
+        glTexCoord2f(0.0, 0.0);        glVertex2f(0, 0);
+        glTexCoord2f(1.0, 0.0);        glVertex2f(w, 0);
+        glTexCoord2f(1.0, 1.0);        glVertex2f(w, -h);
+        glTexCoord2f(0.0, 1.0);        glVertex2f(0, -h);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, IDs3[0])
         glBegin(GL_QUADS);
 
-        glTexCoord2f(0.0, 0.0);        glVertex2f(lim3[2]-2*w,h-lim3[1]);
-        glTexCoord2f(0.0, 1.0);        glVertex2f(lim3[0]-2*w,h-lim3[1]);
-        glTexCoord2f(1.0, 1.0);        glVertex2f(lim3[0]-2*w,h-lim3[3]);
-        glTexCoord2f(1.0, 0.0);        glVertex2f(lim3[2]-2*w,h-lim3[3]);
+        glTexCoord2f(0.0, 0.0);        glVertex2f(lim3[0]-w,h-lim3[3]);
+        glTexCoord2f(0.0, 1.0);        glVertex2f(lim3[0]-w,h-lim3[1]);
+        glTexCoord2f(1.0, 1.0);        glVertex2f(lim3[2]-w,h-lim3[1]);
+        glTexCoord2f(1.0, 0.0);        glVertex2f(lim3[2]-w,h-lim3[3]);
 
 
 
@@ -931,11 +927,10 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBindTexture(GL_TEXTURE_2D, IDs2[0])
         glBegin(GL_QUADS);
 
-        glTexCoord2f(1.0, 1.0);        glVertex2f(lim2[2],h-lim2[3]);
-        glTexCoord2f(0.0, 1.0);        glVertex2f(lim2[0],h-lim2[3]);
-        glTexCoord2f(0.0, 0.0);        glVertex2f(lim2[0],h-lim2[1]);
-        glTexCoord2f(1.0, 0.0);        glVertex2f(lim2[2],h-lim2[1]);
-
+        glTexCoord2f(0.0, 0.0);        glVertex2f(lim2[0] -  w, lim2[1]-h);
+        glTexCoord2f(0.0, 1.0);        glVertex2f(lim2[0] -  w, lim2[3]-h);
+        glTexCoord2f(1.0, 1.0);        glVertex2f(lim2[2] -  w, lim2[3]-h);
+        glTexCoord2f(1.0, 0.0);        glVertex2f(lim2[2] -  w, lim2[1]-h);
         glEnd();
 
         if screen>0:
@@ -943,13 +938,13 @@ class GLWidget(QtOpenGL.QGLWidget):
             glBegin(GL_QUADS);
 
             glTexCoord2f(1.0, 1.0);
-            glVertex2f(w, h);
+            glVertex2f(0, 0);
             glTexCoord2f(0.0, 1.0);
-            glVertex2f(0, h);
+            glVertex2f(-w, 0);
             glTexCoord2f(0.0, 0.0);
-            glVertex2f(0,0);
+            glVertex2f(-w,-h);
             glTexCoord2f(1.0, 0.0);
-            glVertex2f(w, 0);
+            glVertex2f(0, -h);
 
             glEnd();
         glColor4f(1.0, 1.0, 1.0, window.opacity.value() / 100.0);
@@ -967,14 +962,14 @@ class GLWidget(QtOpenGL.QGLWidget):
         glDisable(GL_TEXTURE_2D)
         glLineWidth(1.0);
         glColor3f(1, 1, 1)
-        self.renderText(-W+10, -H/2, 0, window.t11)
-        self.renderText(-W/2, -20, 0, window.t21)
+        self.renderText(10, -H/2, 0, window.t11)
+        self.renderText(W/2, -20, 0, window.t21)
 
-        self.renderText(-W / 2, H - 20, 0, window.t21)
-        self.renderText(-w+10, H/2, 0, window.t31)
+        self.renderText(W / 2, H - 20, 0, window.t31)
+        self.renderText(10, H/2, 0, window.t21)
 
-        self.renderText(W/2, 0-20, 0, window.t31)
-        self.renderText( 10, -H/2, 0, window.t11)
+        self.renderText(-W/2, H-20, 0, window.t31)
+        self.renderText( -W+10, H/2, 0, window.t11)
 
     def drawMask(self):
         global X_AXIS, Y_AXIS, Z_AXIS
@@ -986,40 +981,40 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBegin(GL_QUADS);
 
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(-w, 0);
-        glTexCoord2f(1.0, 0.0);
         glVertex2f(0, 0);
+        glTexCoord2f(1.0, 0.0);
+        glVertex2f(w, 0);
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(0, -h);
+        glVertex2f(w, -h);
         glTexCoord2f(0.0, 1.0);
-        glVertex2f(-w, -h);
+        glVertex2f(0, -h);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, M3)
         glBegin(GL_QUADS);
 
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(lim3[2] - 2 * w, h - lim3[1]);
+        glVertex2f(lim3[0] - w, h - lim3[3]);
         glTexCoord2f(0.0, 1.0);
-        glVertex2f(lim3[0] - 2 * w, h - lim3[1]);
+        glVertex2f(lim3[0] - w, h - lim3[1]);
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(lim3[0] - 2 * w, h - lim3[3]);
+        glVertex2f(lim3[2] - w, h - lim3[1]);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(lim3[2] - 2 * w, h - lim3[3]);
+        glVertex2f(lim3[2] - w, h - lim3[3]);
 
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, M2)
         glBegin(GL_QUADS);
 
-        glTexCoord2f(1.0, 1.0);
-        glVertex2f(lim2[2], h - lim2[3]);
-        glTexCoord2f(0.0, 1.0);
-        glVertex2f(lim2[0], h - lim2[3]);
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(lim2[0], h - lim2[1]);
+        glVertex2f(lim2[0] - w, lim2[1] - h);
+        glTexCoord2f(0.0, 1.0);
+        glVertex2f(lim2[0] - w, lim2[3] - h);
+        glTexCoord2f(1.0, 1.0);
+        glVertex2f(lim2[2] - w, lim2[3] - h);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(lim2[2], h - lim2[1]);
+        glVertex2f(lim2[2] - w, lim2[1] - h);
 
         glEnd();
 
@@ -1034,39 +1029,39 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBegin(GL_QUADS);
 
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(-w, 0);
-        glTexCoord2f(1.0, 0.0);
         glVertex2f(0, 0);
+        glTexCoord2f(1.0, 0.0);
+        glVertex2f(w, 0);
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(0, -h);
+        glVertex2f(w, -h);
         glTexCoord2f(0.0, 1.0);
-        glVertex2f(-w, -h);
+        glVertex2f(0, -h);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, ML2)
         glBegin(GL_QUADS);
 
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(lim3[2] - 2 * w, h - lim3[1]);
+        glVertex2f(lim3[0] - w, h - lim3[3]);
         glTexCoord2f(0.0, 1.0);
-        glVertex2f(lim3[0] - 2 * w, h - lim3[1]);
+        glVertex2f(lim3[0] - w, h - lim3[1]);
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(lim3[0] - 2 * w, h - lim3[3]);
+        glVertex2f(lim3[2] - w, h - lim3[1]);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(lim3[2] - 2 * w, h - lim3[3]);
+        glVertex2f(lim3[2] - w, h - lim3[3]);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, ML3)
         glBegin(GL_QUADS);
 
-        glTexCoord2f(1.0, 1.0);
-        glVertex2f(lim2[2], h - lim2[3]);
-        glTexCoord2f(0.0, 1.0);
-        glVertex2f(lim2[0], h - lim2[3]);
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(lim2[0], h - lim2[1]);
+        glVertex2f(lim2[0] - w, lim2[1] - h);
+        glTexCoord2f(0.0, 1.0);
+        glVertex2f(lim2[0] - w, lim2[3] - h);
+        glTexCoord2f(1.0, 1.0);
+        glVertex2f(lim2[2] - w, lim2[3] - h);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(lim2[2], h - lim2[1]);
+        glVertex2f(lim2[2] - w, lim2[1] - h);
 
         glEnd();
 
@@ -1108,19 +1103,19 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBegin(GL_LINES);
         glColor3f(1, 0, 0)
-        glVertex2i(-W, Ly);
-        glVertex2i(0, Ly);
+        glVertex2i(W, -H+Ly);
+        glVertex2i(0, -H+Ly);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(1, 0, 0)
-        glVertex2i(0, -H+Ly);
-        glVertex2i(-W, -H+Ly);
+        glVertex2i(W-Ly, W);
+        glVertex2i(W-Ly, 0);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(0, 1, 0)
-        glVertex2i(-W+Lx, -H);
+        glVertex2i(-W+Lx, H);
         glVertex2i(-W+Lx, 0);
         glEnd();
 
@@ -1132,14 +1127,14 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBegin(GL_LINES);
         glColor3f(0, 0, 1)
-        glVertex2i(-Lz, 0);
-        glVertex2i(-Lz, H);
+        glVertex2i(-W, Lz);
+        glVertex2i(0, Lz);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(0, 0, 1)
-        glVertex2i(W, -Lz);
-        glVertex2i(0, -Lz);
+        glVertex2i(W, Lz);
+        glVertex2i(0, Lz);
         glEnd();
 
 
@@ -1163,21 +1158,21 @@ class GLWidget(QtOpenGL.QGLWidget):
         x0 = 0;
         y0 = 0;
         pointer=1
-        if self.x * self.scaleIndex < W and self.y * self.scaleIndex > H:
-            y0 = self.x * self.scaleIndex;
+        if self.x * self.scaleIndex > W and self.y * self.scaleIndex > H:
+            y0 = self.x * self.scaleIndex - H;
             x0 = self.y * self.scaleIndex - W;
             print x0,y0,1
             pointer = 1
         if self.x * self.scaleIndex < W and self.y * self.scaleIndex < H:
-            y0 = int((self.y * self.scaleIndex) * len(image3[0]) / float(W));
-            x0 = int((W - self.x * self.scaleIndex) * len(image3) / float(H));
-            pointer = 3
-        if self.x * self.scaleIndex > W and self.y * self.scaleIndex > H:
-            # x0 = int((self.x * self.scaleIndex)*len(image2[0])/float(W));
-            x0 = int((self.y * self.scaleIndex - H) * len(image2) / float(H));
-            y0 = int((self.x * self.scaleIndex - W) * len(image2[0]) / float(W));
-            print image2[x0][y0]
+            x0 = int((H-self.y * self.scaleIndex) * len(image2) / float(W));
+            y0 = int((self.x * self.scaleIndex) * len(image2[0]) / float(H));
             pointer = 2
+        if self.x * self.scaleIndex > W and self.y * self.scaleIndex < H:
+            # x0 = int((self.x * self.scaleIndex)*len(image2[0])/float(W));
+            x0 = int((H-self.y * self.scaleIndex ) * len(image3) / float(H));
+            y0 = int((self.x * self.scaleIndex - W) * len(image3[0]) / float(W));
+            print image2[x0][y0]
+            pointer = 3
         if self.add==1:
             COLORS = GL_LUMINANCE
             MODE = GL_UNSIGNED_BYTE

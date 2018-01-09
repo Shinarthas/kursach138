@@ -11,7 +11,10 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 #from Image import *
+#from Image import *
 import dicom
+from dicom.tag import Tag, BaseTag
+from dicom.datadict import DicomDictionary, dictionaryVR
 import os
 import csv
 import numpy as np
@@ -22,7 +25,9 @@ import sys
 import PIL
 import math
 from PIL import Image
+#from Image import *
 from matplotlib import pyplot as plt
+from matplotlib import  cm
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 try:
@@ -60,7 +65,7 @@ IDs2 = []
 IDs3=[]
 screen=0
 index=30
-inputdir='V-03-CT-CHESTABDPELVIS/'
+inputdir='V-06-MR-LEG/'
 spacing=0
 slice=0
 # rotation
@@ -80,6 +85,7 @@ lootScheme=0
 mask1=mask2=mask3=[]
 Cmask1=Cmask2=Cmask3=[]
 rawMask1=rawMask2=rawMask3=[]
+binaryMask1=[]
 M1=M2=M3=0
 
 maskLoot1=maskLoot2=maskLoot3=0
@@ -143,16 +149,15 @@ class Ui_Form(QtGui.QWidget):
         self.horizontalSlider2.setValue(params[1]/2)
         self.horizontalSlider2.setOrientation(QtCore.Qt.Horizontal)
         self.horizontalSlider2.setObjectName(_fromUtf8("horizontalSlider2"))
-        #self.horizontalSlider2.valueChanged.connect(self.valuechange)
 
         self.opacity = QtGui.QSlider(Form)
-        self.opacity.setGeometry(QtCore.QRect(540 + (940 - 540) / 2, 210 - 40, (940 - 540) / 2 - 10, 22))
+        self.opacity.setGeometry(QtCore.QRect(540+(940 - 540) / 2, 210-40, (940 - 540) / 2 - 10, 22))
         self.opacity.setMinimum(0)
         self.opacity.setMaximum(100)
         self.opacity.setValue(50)
         self.opacity.setOrientation(QtCore.Qt.Horizontal)
         self.opacity.setObjectName(_fromUtf8("opacity"))
-        # self.horizontalSlider2.valueChanged.connect(self.valuechange)
+        #self.horizontalSlider2.valueChanged.connect(self.valuechange)
 
         self.H = QtGui.QLabel(Form)
         self.H.setGeometry(QtCore.QRect(540, 70, 20, 13))
@@ -193,7 +198,7 @@ class Ui_Form(QtGui.QWidget):
         self.save.setObjectName(_fromUtf8("save"))
 
         self.screen = QtGui.QPushButton(Form)
-        self.screen.setGeometry(QtCore.QRect(540 + (940 - 540) / 2, 210 - 50 - 20, (940 - 540) / 2 - 10, 40 - 10))
+        self.screen.setGeometry(QtCore.QRect(540+(940 - 540) / 2, 210-50-20, (940 - 540) / 2 - 10, 40-10))
         self.screen.clicked.connect(self.screenToFile)
         self.screen.setObjectName(_fromUtf8("screen"))
 
@@ -252,7 +257,7 @@ class Ui_Form(QtGui.QWidget):
         # a = np.tobuffer(mask1, numpy.uint8)
         max = np.max(plan.pixel_array)
 
-        wtf =np.zeros([512,512],dtype=np.uint16)
+        wtf =np.zeros([256,256],dtype=np.uint16)
         for i in rawMask1:
             wtf[i[0]][i[1]]=1
 
@@ -266,8 +271,6 @@ class Ui_Form(QtGui.QWidget):
 
         print len(wtf) ,len(wtf[0])
         #print np.min(wtf), np.max(wtf)
-        plan.Rows = 512
-        plan.Columns = 512
 
         # On (60xx,0010) and (60xx,0011) is stored overlay size
         # ds.add_new(tag, VR, value) dictionaryVR
@@ -296,8 +299,6 @@ class Ui_Form(QtGui.QWidget):
         #x = np.zeros((106, 106, 3))
         result = arr[:, :, 0:3]
         return result
-
-
     def addArea(self):
         self.openGLWidget.add=1
     def clearRects(self):
@@ -312,11 +313,11 @@ class Ui_Form(QtGui.QWidget):
         self.save.setText(_translate("Form", "Save to file", None))
         self.screen.setText(_translate("Form", "Save screen", None))
         self.label.setText(_translate("Form", "M:", None))
-        self.label2.setText(_translate("Form", "D:", None))
+        self.label2.setText(_translate("Form", "E:", None))
         self.L.setText(_translate("Form", 'H', None))
         self.R.setText(_translate("Form", "F", None))
-        self.A.setText(_translate("Form", "L", None))
-        self.P.setText(_translate("Form", "R", None))
+        self.A.setText(_translate("Form", "R", None))
+        self.P.setText(_translate("Form", "L", None))
         self.H.setText(_translate("Form", "P", None))
         self.F.setText(_translate("Form", "A", None))
         self.openGLWidget.setFocus()
@@ -345,10 +346,10 @@ class Ui_Form(QtGui.QWidget):
             c+="A"
 
         if io[0] > 0:
-            a = a + "L"
+            a = a + "R"
         else:
             if io[0] < 0:
-                a = a + "R";
+                a = a + "L";
             else:
                 a = a;
 
@@ -364,9 +365,9 @@ class Ui_Form(QtGui.QWidget):
             a = a + "F"
         else:
             if io[2] < 0:
-                b = b + "H"
+                a = a + "H"
             else:
-                b = b
+                a = a
 
         if io[3] > 0:
             b = b + "L"
@@ -392,8 +393,6 @@ class Ui_Form(QtGui.QWidget):
         self.t11=a
         self.t21=b
         self.t31=c
-        print io
-        print a
         return [number_files,plan.Rows,plan.Columns]
     def loadLoot(self):
         global lootScheme
@@ -408,8 +407,7 @@ class Ui_Form(QtGui.QWidget):
                 if(row[0]==''):
                     shift+=0.5
                     continue
-                lootScheme[int(row[0])][int(shift)]=int(row[3])
-        print lootScheme
+                lootScheme[int(row[0])][int(shift)]=int(row[6])
 
 class GLWidget(QtOpenGL.QGLWidget):
     x=0
@@ -446,6 +444,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_DECAL)
+
     def resetTextures(self):
         global IDs, IDs2, IDs3, spacing, slice,screen
         global lim1, lim2, lim3
@@ -710,10 +709,12 @@ class GLWidget(QtOpenGL.QGLWidget):
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         image2 = imageK[0]
+        '''
         #lim2 = [W + w / slice * spacing / 2, 0, W + w / slice * spacing + (w - w / slice * spacing) / 2, iy]
         lim2 = [len(image[0][ii]), (len(image[0][ii]) - len(os.listdir(inputdir)))/2/spacing*slice, 2*len(image[0][ii]), ((len(image[0][ii]) - len(os.listdir(inputdir)))/2 + len(os.listdir(inputdir)))/spacing*slice]
         lim2 = [(len(image[0][ii]) - len(os.listdir(inputdir))/spacing*slice)/2,len(image[0][ii]) ,
                 ((len(image[0][ii]) - len(os.listdir(inputdir))/spacing*slice)/2 + len(os.listdir(inputdir)))/spacing*slice,2*len(image[0][ii]) ]
+        '''
         rect2 = lim2
         ii = window.horizontalSlider3.value()
         IDs3 = glGenTextures(3)
@@ -735,9 +736,10 @@ class GLWidget(QtOpenGL.QGLWidget):
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
         image3 = imageS
+        '''
         lim3 = [len(image[0]), (len(image[0]) - len(os.listdir(inputdir))/ spacing * slice) / 2 / spacing * slice, 2 * len(image[0]),
                 ((len(image[0]) - len(os.listdir(inputdir))/ spacing * slice) / 2 + len(os.listdir(inputdir))) / spacing * slice]
-
+        '''
         #lim3 = [0, H + h / slice * spacing / 2, ix, H + h / slice * spacing + (h - h / slice * spacing) / 2]
         Lz = int(window.horizontalSlider1.value() * (w) / len(imagesGlobal))
         # Lz = window.horizontalSlider1.value()
@@ -906,14 +908,10 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBindTexture(GL_TEXTURE_2D, IDs[index1])
         glBegin(GL_QUADS);
 
-        glTexCoord2f(0.0, 0.0);
-        glVertex2f(0, 0);
-        glTexCoord2f(1.0, 0.0);
-        glVertex2f(w, 0);
-        glTexCoord2f(1.0, 1.0);
-        glVertex2f(w, -h);
-        glTexCoord2f(0.0, 1.0);
-        glVertex2f(0, -h);
+        glTexCoord2f(0.0, 0.0);        glVertex2f(-w, 0);
+        glTexCoord2f(1.0, 0.0);        glVertex2f(0, 0);
+        glTexCoord2f(1.0, 1.0);        glVertex2f(0, -h);
+        glTexCoord2f(0.0, 1.0);        glVertex2f(-w, -h);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, IDs3[0])
@@ -931,11 +929,10 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBindTexture(GL_TEXTURE_2D, IDs2[0])
         glBegin(GL_QUADS);
 
-        glTexCoord2f(1.0, 1.0);        glVertex2f(lim2[2]-w,2*h-lim2[3]);
-        glTexCoord2f(0.0, 1.0);        glVertex2f(lim2[0]-w,2*h-lim2[3]);
-        glTexCoord2f(0.0, 0.0);        glVertex2f(lim2[0]-w,2*h-lim2[1]);
-        glTexCoord2f(1.0, 0.0);        glVertex2f(lim2[2]-w,2*h-lim2[1]);
-
+        glTexCoord2f(1.0, 1.0);        glVertex2f(lim2[2],h-lim2[3]);
+        glTexCoord2f(0.0, 1.0);        glVertex2f(lim2[0],h-lim2[3]);
+        glTexCoord2f(0.0, 0.0);        glVertex2f(lim2[0],h-lim2[1]);
+        glTexCoord2f(1.0, 0.0);        glVertex2f(lim2[2],h-lim2[1]);
         glEnd();
 
         if screen>0:
@@ -943,16 +940,16 @@ class GLWidget(QtOpenGL.QGLWidget):
             glBegin(GL_QUADS);
 
             glTexCoord2f(1.0, 1.0);
-            glVertex2f(0, 0);
+            glVertex2f(w, 0);
             glTexCoord2f(0.0, 1.0);
-            glVertex2f(-w, 0);
+            glVertex2f(0, 0);
             glTexCoord2f(0.0, 0.0);
-            glVertex2f(-w,-h);
+            glVertex2f(0,-h);
             glTexCoord2f(1.0, 0.0);
-            glVertex2f(0, -h);
+            glVertex2f(w, -h);
 
             glEnd();
-        glColor4f(1.0, 1.0, 1.0, window.opacity.value() / 100.0);
+        glColor4f(1.0, 1.0, 1.0, window.opacity.value()/100.0);
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
         if window.maskCheckBox.isChecked():
             self.drawMask()
@@ -967,14 +964,14 @@ class GLWidget(QtOpenGL.QGLWidget):
         glDisable(GL_TEXTURE_2D)
         glLineWidth(1.0);
         glColor3f(1, 1, 1)
-        self.renderText(10, -H/2, 0, window.t11)
-        self.renderText(W/2, -20, 0, window.t21)
+        self.renderText(-W+10, -H/2, 0, window.t11)
+        self.renderText(-W/2, 0-20, 0, window.t21)
 
-        self.renderText(W / 2, H - 20, 0, window.t31)
-        self.renderText(10, H/2, 0, window.t21)
+        self.renderText(-W / 2, H - 20, 0, window.t31)
+        self.renderText(-W+10, H/2, 0, window.t21)
 
-        self.renderText(-W/2, H-20, 0, window.t31)
-        self.renderText( -W+10, H/2, 0, window.t11)
+        self.renderText(W/2, H-20, 0, window.t31)
+        self.renderText( 10, H/2, 0, window.t11)
 
     def drawMask(self):
         global X_AXIS, Y_AXIS, Z_AXIS
@@ -987,13 +984,13 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBegin(GL_QUADS);
 
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(0, 0);
+        glVertex2f(-w, 0);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(w, 0);
+        glVertex2f(0, 0);
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(w, -h);
-        glTexCoord2f(0.0, 1.0);
         glVertex2f(0, -h);
+        glTexCoord2f(0.0, 1.0);
+        glVertex2f(-w, -h);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, M3)
@@ -1014,13 +1011,13 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBegin(GL_QUADS);
 
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(lim2[2] - w, 2 * h - lim2[3]);
+        glVertex2f(lim2[2], h - lim2[3]);
         glTexCoord2f(0.0, 1.0);
-        glVertex2f(lim2[0] - w, 2 * h - lim2[3]);
+        glVertex2f(lim2[0], h - lim2[3]);
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(lim2[0] - w, 2 * h - lim2[1]);
+        glVertex2f(lim2[0], h - lim2[1]);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(lim2[2] - w, 2 * h - lim2[1]);
+        glVertex2f(lim2[2], h - lim2[1]);
 
         glEnd();
 
@@ -1035,13 +1032,13 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBegin(GL_QUADS);
 
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(0, 0);
+        glVertex2f(-w, 0);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(w, 0);
+        glVertex2f(0, 0);
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(w, -h);
-        glTexCoord2f(0.0, 1.0);
         glVertex2f(0, -h);
+        glTexCoord2f(0.0, 1.0);
+        glVertex2f(-w, -h);
         glEnd();
 
         glBindTexture(GL_TEXTURE_2D, ML2)
@@ -1061,13 +1058,13 @@ class GLWidget(QtOpenGL.QGLWidget):
         glBegin(GL_QUADS);
 
         glTexCoord2f(1.0, 1.0);
-        glVertex2f(lim2[2] - w, 2 * h - lim2[3]);
+        glVertex2f(lim2[2], h - lim2[3]);
         glTexCoord2f(0.0, 1.0);
-        glVertex2f(lim2[0] - w, 2 * h - lim2[3]);
+        glVertex2f(lim2[0], h - lim2[3]);
         glTexCoord2f(0.0, 0.0);
-        glVertex2f(lim2[0] - w, 2 * h - lim2[1]);
+        glVertex2f(lim2[0], h - lim2[1]);
         glTexCoord2f(1.0, 0.0);
-        glVertex2f(lim2[2] - w, 2 * h - lim2[1]);
+        glVertex2f(lim2[2], h - lim2[1]);
 
         glEnd();
 
@@ -1081,8 +1078,8 @@ class GLWidget(QtOpenGL.QGLWidget):
         if self.x*self.scaleIndex > W and self.y*self.scaleIndex < H:
             x0 = 0;
             y0 = 0;
-        if self.x*self.scaleIndex > W and self.y*self.scaleIndex > H:
-            x0 = 0;
+        if self.x*self.scaleIndex < W and self.y*self.scaleIndex > H:
+            x0 = -W;
             y0 = -H;
         glLineWidth(2.0);
 
@@ -1109,38 +1106,38 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBegin(GL_LINES);
         glColor3f(1, 0, 0)
-        glVertex2i(W-Ly, H);
-        glVertex2i(W-Ly, 0);
+        glVertex2i(-W,-H+Ly);
+        glVertex2i(0, -H+Ly);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(1, 0, 0)
-        glVertex2i(0, -H+Ly);
-        glVertex2i(W, -H+Ly);
+        glVertex2i(-Ly, 0);
+        glVertex2i(-Ly, H);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(0, 1, 0)
-        glVertex2i(Lx-W, H);
-        glVertex2i(Lx-W, 0);
+        glVertex2i(Lx , H);
+        glVertex2i(Lx , 0);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(0, 1, 0)
-        glVertex2i(Lx, -H);
-        glVertex2i(Lx, 0);
+        glVertex2i(Lx - W, -H);
+        glVertex2i(Lx - W, 0);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(0, 0, 1)
-        glVertex2i(-W, H - Lz);
-        glVertex2i(0, H - Lz);
+        glVertex2i(0, W-Lz);
+        glVertex2i(W, W-Lz);
         glEnd();
 
         glBegin(GL_LINES);
         glColor3f(0, 0, 1)
-        glVertex2i(W, H-Lz);
-        glVertex2i(0, H-Lz);
+        glVertex2i(0, W - Lz);
+        glVertex2i(-W, W - Lz);
         glEnd();
 
 
@@ -1156,7 +1153,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
     def mousePressEvent(self, event):
         global mask1,mask2,mask3
-        global Cmask1, Cmask2, Cmask3
+        global Cmask1,Cmask2,Cmask3
         global rawMask1,rawMask2,rawMask3
         global maskLoot1,maskLoot2,maskLoot3
         global lootScheme
@@ -1165,21 +1162,23 @@ class GLWidget(QtOpenGL.QGLWidget):
         x0 = 0;
         y0 = 0;
         pointer=1
-        if self.x * self.scaleIndex > W and self.y * self.scaleIndex > H:
-            y0 = self.x * self.scaleIndex - H;
-            x0 = self.y * self.scaleIndex -W;
-            print x0,y0,1
+        print self.scaleIndex
+        if self.x * self.scaleIndex < W and self.y * self.scaleIndex > H:
+            y0 = self.x * self.scaleIndex;
+            x0 = self.y * self.scaleIndex-H;
             pointer = 1
         if self.x * self.scaleIndex < W and self.y * self.scaleIndex < H:
-            x0 = int((self.y * self.scaleIndex) * len(image3) / float(W));
-            y0 = int((self.x * self.scaleIndex) * len(image3[0]) / float(H));
-            pointer = 2
+            y0 = int((self.x * self.scaleIndex) * len(image3[0]) / float(W));
+            x0 = int((self.y * self.scaleIndex) * len(image3) / float(H));
+            print len(image3), len(image3[0])
+            print x0, y0
+            pointer = 3
         if self.x * self.scaleIndex > W and self.y * self.scaleIndex < H:
             # x0 = int((self.x * self.scaleIndex)*len(image2[0])/float(W));
-            x0 = int((self.y * self.scaleIndex ) * len(image2) / float(H));
-            y0 = int((self.x * self.scaleIndex - H) * len(image2[0]) / float(W));
+            x0 = int((self.y * self.scaleIndex) * len(image2) / float(H));
+            y0 = int((self.x * self.scaleIndex-W) * len(image2[0]) / float(W));
             print image2[x0][y0]
-            pointer = 3
+            pointer = 2
         if self.add==1:
             COLORS = GL_LUMINANCE
             MODE = GL_UNSIGNED_BYTE
@@ -1203,8 +1202,8 @@ class GLWidget(QtOpenGL.QGLWidget):
                             maskLoot1[i][j * 3+1] = lootScheme[li][2]
                             maskLoot1[i][j * 3+2] = lootScheme[li][3]
                             Cmask1[i][j * 3] = 255
-                            Cmask1[i][j * 3+1] = 153
-                            Cmask1[i][j * 3+2] = 51
+                            Cmask1[i][j * 3+1] = 213
+                            Cmask1[i][j * 3+2] = 0
                         mask1[i][j]=max(mask[i][j],mask1[i][j])
                 mask=Cmask1
                 maskLoot=maskLoot1
@@ -1225,8 +1224,8 @@ class GLWidget(QtOpenGL.QGLWidget):
                             maskLoot2[i][j * 3 + 1] = int(lootScheme[li][2])
                             maskLoot2[i][j * 3 + 2] = int(lootScheme[li][3])
                             Cmask2[i][j * 3 ] = 255
-                            Cmask2[i][j * 3 +1] = 153
-                            Cmask2[i][j * 3 + 2] = 51
+                            Cmask2[i][j * 3 +1] = 213
+                            Cmask2[i][j * 3 + 2] = 0
                         mask2[i][j] = max(mask[i][j], mask2[i][j])
                 mask = Cmask2
                 maskLoot = maskLoot2
@@ -1247,8 +1246,8 @@ class GLWidget(QtOpenGL.QGLWidget):
                             maskLoot3[i][j * 3+1] = int(lootScheme[li][2])
                             maskLoot3[i][j * 3+2] = int(lootScheme[li][3])
                             Cmask3[i][j * 3] = 255
-                            Cmask3[i][j * 3+1] = 153
-                            Cmask3[i][j * 3+2] = 51
+                            Cmask3[i][j * 3+1] = 213
+                            Cmask3[i][j * 3+2] = 0
                         mask3[i][j] = max(mask[i][j], mask3[i][j])
                 mask = Cmask3
                 maskLoot = maskLoot3
@@ -1309,8 +1308,8 @@ class GLWidget(QtOpenGL.QGLWidget):
                     if is_in_img:
                         mask[i][j]=255
                         Cmask[i][3*j]=255
-                        Cmask[i][3*j+1]=153
-                        Cmask[i][3*j+2]=51
+                        Cmask[i][3*j+1]=213
+                        Cmask[i][3*j+2]=0
                         maskLoot[i][3*j]=lootScheme[int(image[i][j])][1]
                         maskLoot[i][3*j+1]=lootScheme[int(image[i][j])][2]
                         maskLoot[i][3*j+2]=lootScheme[int(image[i][j])][3]
@@ -1364,7 +1363,6 @@ class GLWidget(QtOpenGL.QGLWidget):
             lim = lim3
             image = image3
         seed=(x,y)
-        print seed
         # threshold tests
         if (not isinstance(threshold, int)):
             raise TypeError("(%s) Int expected!" % (sys._getframe().f_code.co_name))
@@ -1386,7 +1384,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         ret=ret1-ret2
         for i in range(len(ret)):
             for j in range(len(ret[0])):
-                if ret[i][j]>250:
+                if ret[i][j]>=255:
                     countur.append([i,j])
 
         #print len(ret), len(ret[0]), len(countur)
@@ -1425,7 +1423,7 @@ class MyDynamicMplCanvas(MyMplCanvas):
         histData=list()
         for i in rawMask1:
             pixel=int(image1[i[0]][i[1]])
-            if (lootScheme[pixel][1]<lootScheme[pixel][2] and lootScheme[pixel][3]==0) or (lootScheme[pixel][3]<lootScheme[pixel][2] and lootScheme[pixel][1]==0):
+            if(lootScheme[pixel][1]<lootScheme[pixel][3] and lootScheme[pixel][2]<lootScheme[pixel][3]):
                 histData.append(pixel)
         if len(histData)<2:
             return
@@ -1434,15 +1432,15 @@ class MyDynamicMplCanvas(MyMplCanvas):
         min=subImage.min()
         max=subImage.max()
         mean=subImage.mean()
-        energy = 0
+        energy=0
         for i in subImage:
-            energy += (i - mean) ** 2
-        energy = energy / len(subImage)
-        window.label.setText('M: ' + str("%.2f" % (mean)))
-        window.label2.setText('D: ' + str("%.2f" % (energy)))
+            energy+=i**2
+        energy=energy/len(subImage)
+        window.label.setText('M: '+str("%.2f" % (mean)))
+        window.label2.setText('E: '+str("%.2f" % (energy)))
 
-        count = int(math.floor(2*(max-min)*(2**((len(subImage))-1)**(-1/3.0))))
-        print count
+        count = int(math.floor(2 * (max - min) * (2 ** ((len(subImage)) - 1) ** (-1 / 3.0))))
+
         hist=np.histogram(subImage,count,[min,max])
         ox=range(0,len(hist[0]))
         ox = [min+x * (max-min)/float(len(hist[0])) for x in ox]
