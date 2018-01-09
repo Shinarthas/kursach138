@@ -1418,9 +1418,8 @@ class MyDynamicMplCanvas(MyMplCanvas):
         histData=list()
         for i in rawMask1:
             pixel=int(image1[i[0]][i[1]])
-
-
-            histData.append(pixel)
+            if(lootScheme[pixel][1]<lootScheme[pixel][2] and lootScheme[pixel][3]<lootScheme[pixel][2]) or  (lootScheme[pixel][2]==0 and lootScheme[pixel][1]!=0 and lootScheme[pixel][3]!=0):
+                histData.append(pixel)
         if len(histData)<2:
             return
 
