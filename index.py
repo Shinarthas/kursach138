@@ -320,8 +320,8 @@ class Ui_Form(QtGui.QWidget):
         self.R.setText(_translate("Form", "R", None))
         self.A.setText(_translate("Form", "A", None))
         self.P.setText(_translate("Form", "P", None))
-        self.H.setText(_translate("Form", "F", None))
-        self.F.setText(_translate("Form", "H", None))
+        self.H.setText(_translate("Form", "H", None))
+        self.F.setText(_translate("Form", "F", None))
         self.openGLWidget.setFocus()
     def preRenderDir(self ,dir ):
         list = os.listdir(dir)  # dir is your directory path
@@ -459,7 +459,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         Lz = int(window.horizontalSlider1.value()* (w)/ len(imagesGlobal))
         Lx = window.horizontalSlider2.value()
 
-        Ly = window.horizontalSlider3.value()
+        Ly = 512-window.horizontalSlider3.value()
         tmp1 = (Lz - (w - w / slice * spacing) / 2) / (w / slice * spacing) * len(imagesGlobal) - 1
         index1 = int(window.horizontalSlider1.value())
         image1=imagesGlobal[index1]
@@ -579,7 +579,7 @@ class GLWidget(QtOpenGL.QGLWidget):
 
         glBindTexture(GL_TEXTURE_2D, M3);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask3[0]), len(mask3), 0, GK_RGB, MODE, Cmask3)
+        glTexImage2D(GL_TEXTURE_2D, 0, 3, len(mask3[0]), len(mask3), 0, GL_RGB, MODE, Cmask3)
         glGetIntegerv(GL_TEXTURE_BINDING_2D)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP)
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP)
@@ -1424,7 +1424,7 @@ class MyDynamicMplCanvas(MyMplCanvas):
         energy=0
         for i in subImage:
             energy+=i**2
-        energy=energy/len(subImage)
+        energy=energy
         window.label.setText('M: '+str("%.2f" % (mean)))
         window.label2.setText('E: '+str("%.2f" % (energy)))
 

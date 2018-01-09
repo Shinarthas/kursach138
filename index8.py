@@ -1418,8 +1418,9 @@ class MyDynamicMplCanvas(MyMplCanvas):
         histData=list()
         for i in rawMask1:
             pixel=int(image1[i[0]][i[1]])
-            if(lootScheme[pixel][1]<lootScheme[pixel][2] and lootScheme[pixel][3]<lootScheme[pixel][2]):
-                histData.append(pixel)
+
+
+            histData.append(pixel)
         if len(histData)<2:
             return
 
@@ -1430,15 +1431,15 @@ class MyDynamicMplCanvas(MyMplCanvas):
         energy=0
         for i in subImage:
             energy+=(i - mean)**2
-        energy=energy/len(subImage)
+        energy = (energy / len(subImage)) ** 0.5
         window.label.setText('M: '+str("%.2f" % (mean)))
         window.label2.setText('D: '+str("%.2f" % (energy)))
-
-        count = int(math.floor(3.5*energy*((2**((len(subImage))-1))**(-1/3.0))))
-
-        hist=np.histogram(subImage,count,[min,max])
-        ox=range(0,len(hist[0]))
-        ox = [min+x * (max-min)/float(len(hist[0])) for x in ox]
+        cyka=(len(subImage) ** (-1 / 3.0))
+        count = int(math.ceil(3.5 * energy * cyka))+1
+        print count, energy, 3.5 * energy * cyka
+        ox = range(min, max, count)
+        # ox = [min + x * (max - min) / float(len(hist[0])) for x in ox]
+        hist = np.histogram(subImage, len(ox), [min, max])
 
         #print hist
         self.axes.cla()

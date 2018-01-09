@@ -1437,15 +1437,16 @@ class MyDynamicMplCanvas(MyMplCanvas):
         energy = 0
         for i in subImage:
             energy += (i - mean) ** 2
-        energy = energy / len(subImage)
+        energy = (energy / len(subImage))**0.5
         window.label.setText('M: ' + str("%.2f" % (mean)))
         window.label2.setText('D: ' + str("%.2f" % (energy)))
 
-        count = int(math.floor(2*(max-min)*(2**((len(subImage))-1)**(-1/3.0))))
+        count = int(math.floor(2*(max-min)*(len(subImage)**(-1/3.0))))
         print count
-        hist=np.histogram(subImage,count,[min,max])
-        ox=range(0,len(hist[0]))
-        ox = [min+x * (max-min)/float(len(hist[0])) for x in ox]
+        ox = range(min, max, count)
+        #ox = [min + x * (max - min) / float(len(hist[0])) for x in ox]
+        hist=np.histogram(subImage,len(ox),[min,max])
+
 
         #print hist
         self.axes.cla()
