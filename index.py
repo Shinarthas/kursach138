@@ -235,16 +235,19 @@ class Ui_Form(QtGui.QWidget):
         plan = dicom.read_file(target)
         max = np.max(plan.pixel_array)
         wtf = self.convertQImageToMat(p2)
-        plan.SpecificCharacterSet="ISO_IR 100"
+        #plan.SpecificCharacterSet="ISO_IR 100"
         plan.PhotometricInterpretation="RGB"
         plan.SamplesPerPixel=3
         plan.Rows=len(wtf)
         plan.Columns=len(wtf[0])
         plan.BitsAllocated=8
         plan.BitsStored=8
+        plan.PlanarConfiguration = 0
         plan.HighBit=7
         plan.PixelRepresentation=0
+        #wtf2=wtf[:][:][0]
         plan.PixelData = wtf.astype(np.uint8).tobytes()
+        #print (len(wtf[:][:][0]))
         plan.save_as("rtplan3.dcm")
 
         print len(wtf),len(wtf[0]),len(wtf[0][0])

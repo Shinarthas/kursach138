@@ -7,3 +7,6 @@
 /screen.jpg
 *.png
 *.dcm
+/release
+*.doc*
+*.rar

@@ -237,6 +237,7 @@ class Ui_Form(QtGui.QWidget):
         plan.Columns=len(wtf[0])
         plan.BitsAllocated=8
         plan.BitsStored=8
+        plan.PlanarConfiguration = 0
         plan.HighBit=7
         plan.PixelRepresentation=0
         plan.PixelData = wtf.astype(np.uint8).tobytes()
